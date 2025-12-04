@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Product Management App</title>
+
+    <!-- Load Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f4f4f4;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        form {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            width: 250px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 16px;
+            margin-left: 8px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            background: white;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .action-btn {
+            padding: 6px 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+        }
+
+        .action-btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Product Management App</h1>
+
+    <!-- Product Input Form -->
+    <form id="product-form">
+        <input type="text" id="product-name" placeholder="Enter product name" required />
+        <button type="submit">Add Product</button>
+    </form>
+
+    <!-- Products Table -->
+    <table id="products-table">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const { createClient } = supabase;
+
+        const supabaseUrl = 'https://onxdoymfchdxwedbfumn.supabase.co';   // Replace with your Supabase URL
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ueGRveW1mY2hkeHdlZGJmdW1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ3Nzg1OTcsImV4cCI6MjA4MDM1NDU5N30.0hpnTCNsfvRWwUIa98lryQg8jIwZFoTHxEB2X28iukE';                           // Replace with your Supabase Key
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+        const productForm = document.getElementById("product-form");
+        const productNameInput = document.getElementById("product-name");
+        const productsTableBody = document.querySelector("#products-table tbody");
+
+        // Load products on page load
+        document.addEventListener("DOMContentLoaded", loadProducts);
+
+        // Fetch and display all products
+        async function loadProducts() {
+            const { data: products, error } = await supabaseClient
+                .from("products")
+                .select("*")
+                .order("id", { ascending: true });
+
+            if (error) {
+                console.error("Error loading products:", error);
+                return;
+            }
+
+            productsTableBody.innerHTML = ""; // Clear existing rows
+
+            products.forEach(product => addProductRow(product));
+        }
+
+        // Add a product row to the table
+        function addProductRow(product) {
+            const tr = document.createElement("tr");
+
+            tr.innerHTML = `
+                <td>${product.name}</td>
+                <td>
+                    <button class="action-btn" onclick="editProduct(${product.id}, '${product.name}')">Edit</button>
+                    <button class="action-btn delete-btn" onclick="deleteProduct(${product.id})">Delete</button>
+                </td>
+            `;
+
+            productsTableBody.appendChild(tr);
+        }
+
+        // Add product form submit
+        productForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const name = productNameInput.value.trim();
+            if (!name) return;
+
+            const { data, error } = await supabaseClient
+                .from("products")
+                .insert([{ name }])
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Insert error:", error);
+                return;
+            }
+
+            addProductRow(data);
+            productNameInput.value = "";
+        });
+
+        // Edit product
+        async function editProduct(id, currentName) {
+            const newName = prompt("Enter new product name:", currentName);
+            if (!newName || newName.trim() === "") return;
+
+            const { error } = await supabaseClient
+                .from("products")
+                .update({ name: newName })
+                .eq("id", id);
+
+            if (error) {
+                console.error("Update error:", error);
+                return;
+            }
+
+            loadProducts();
+        }
+
+        // Delete product
+        async function deleteProduct(id) {
+            if (!confirm("Are you sure you want to delete this product?")) return;
+
+            const { error } = await supabaseClient
+                .from("products")
+                .delete()
+                .eq("id", id);
+
+            if (error) {
+                console.error("Delete error:", error);
+                return;
+            }
+
+            loadProducts();
+        }
+    </script>
+
+</body>
+</html>
